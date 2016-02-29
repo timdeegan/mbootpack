@@ -24,15 +24,15 @@
 struct mod_list
 {
   /* the memory used goes from bytes 'mod_start' to 'mod_end-1' inclusive */
-  unsigned long mod_start;
-  unsigned long mod_end;
+  uint32_t mod_start;
+  uint32_t mod_end;
   
   /* Module command line */
-  unsigned long cmdline;
+  uint32_t cmdline;
   
   /* padding to take it to 16 bytes (must be zero) */
-  unsigned long pad;
-};
+  uint32_t pad;
+} __attribute__((__packed__));
 
 
 /*
@@ -44,13 +44,13 @@ struct mod_list
 
 struct AddrRangeDesc
 {
-  unsigned long size;
-  unsigned long long BaseAddr;
-  unsigned long long Length;
-  unsigned long Type;
+  uint32_t size;
+  uint64_t BaseAddr;
+  uint64_t Length;
+  uint32_t Type;
   
   /* unspecified optional padding... */
-};
+} __attribute__((__packed__));
 
 /* usable memory "Type", all others are reserved.  */
 #define MB_ARD_MEMORY		1
@@ -60,22 +60,22 @@ struct AddrRangeDesc
 struct drive_info
 {
   /* The size of this structure.  */
-  unsigned long size;
+  uint32_t size;
 
   /* The BIOS drive number.  */
-  unsigned char drive_number;
+  uint8_t drive_number;
 
   /* The access mode (see below).  */
-  unsigned char drive_mode;
+  uint8_t drive_mode;
 
   /* The BIOS geometry.  */
-  unsigned short drive_cylinders;
-  unsigned char drive_heads;
-  unsigned char drive_sectors;
+  uint16_t drive_cylinders;
+  uint8_t drive_heads;
+  uint8_t drive_sectors;
 
   /* The array of I/O ports used for the drive.  */
-  unsigned short drive_ports[0];
-};
+  uint16_t drive_ports[0];
+} __attribute__((__packed__));
 
 /* Drive Mode.  */
 #define MB_DI_CHS_MODE		0
@@ -85,15 +85,15 @@ struct drive_info
 /* APM BIOS info.  */
 struct apm_info
 {
-  unsigned short version;
-  unsigned short cseg;
-  unsigned long offset;
-  unsigned short cseg_16;
-  unsigned short dseg_16;
-  unsigned short cseg_len;
-  unsigned short cseg_16_len;
-  unsigned short dseg_16_len;
-};
+  uint16_t version;
+  uint16_t cseg;
+  uint32_t offset;
+  uint16_t cseg_16;
+  uint16_t dseg_16;
+  uint16_t cseg_len;
+  uint16_t cseg_16_len;
+  uint16_t dseg_16_len;
+} __attribute__((__packed__));
 
 
 /*
@@ -106,71 +106,71 @@ struct apm_info
 struct multiboot_info
 {
   /* MultiBoot info version number */
-  unsigned long flags;
+  uint32_t flags;
   
   /* Available memory from BIOS */
-  unsigned long mem_lower;
-  unsigned long mem_upper;
+  uint32_t mem_lower;
+  uint32_t mem_upper;
   
   /* "root" partition */
-  unsigned long boot_device;
+  uint32_t boot_device;
   
   /* Kernel command line */
-  unsigned long cmdline;
+  uint32_t cmdline;
   
   /* Boot-Module list */
-  unsigned long mods_count;
-  unsigned long mods_addr;
+  uint32_t mods_count;
+  uint32_t mods_addr;
   
   union
   {
     struct
     {
       /* (a.out) Kernel symbol table info */
-      unsigned long tabsize;
-      unsigned long strsize;
-      unsigned long addr;
-      unsigned long pad;
-    }
+      uint32_t tabsize;
+      uint32_t strsize;
+      uint32_t addr;
+      uint32_t pad;
+    }  __attribute__((__packed__))
     a;
     
     struct
     {
       /* (ELF) Kernel section header table */
-      unsigned long num;
-      unsigned long size;
-      unsigned long addr;
-      unsigned long shndx;
-    }
+      uint32_t num;
+      uint32_t size;
+      uint32_t addr;
+      uint32_t shndx;
+    } __attribute__((__packed__))
     e;
-  }
+  } __attribute__((__packed__))
   syms;
   
   /* Memory Mapping buffer */
-  unsigned long mmap_length;
-  unsigned long mmap_addr;
+  uint32_t mmap_length;
+  uint32_t mmap_addr;
   
   /* Drive Info buffer */
-  unsigned long drives_length;
-  unsigned long drives_addr;
+  uint32_t drives_length;
+  uint32_t drives_addr;
   
   /* ROM configuration table */
-  unsigned long config_table;
+  uint32_t config_table;
   
   /* Boot Loader Name */
-  unsigned long boot_loader_name;
+  uint32_t boot_loader_name;
 
   /* APM table */
-  unsigned long apm_table;
+  uint32_t apm_table;
 
   /* Video */
-  unsigned long vbe_control_info;
-  unsigned long vbe_mode_info;
-  unsigned short vbe_mode;
-  unsigned short vbe_interface_seg;
-  unsigned short vbe_interface_off;
-  unsigned short vbe_interface_len;
-};
+  uint32_t vbe_control_info;
+  uint32_t vbe_mode_info;
+  uint16_t vbe_mode;
+  uint16_t vbe_interface_seg;
+  uint16_t vbe_interface_off;
+  uint16_t vbe_interface_len;
+} __attribute__((__packed__));
 
 /*
  *  Flags to be set in the 'flags' parameter above

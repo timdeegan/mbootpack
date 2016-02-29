@@ -17,8 +17,8 @@ You can now boot the 'bzImage' file using your favourite linux bootloader.
 
 The kernel command line will be provided at boot time by the bootloader
 (you can specify a kernel command-line using the '-c' flag, but it will
-be overridden at boot time unledd the bootloder provides an entirely
-empty command line).  If you wan to override the command line for the
+be overridden at boot time unless the bootloder provides an entirely
+empty command line).  If you want to override the command line for the
 first module (i.e. domain 0 kernel in Xen) at boot time, append ' -- '
 and the module commadn line to the bootloader command line, e.g.:
 

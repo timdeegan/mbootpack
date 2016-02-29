@@ -21,7 +21,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
  *  02111-1307, USA.
  *
- * $Id: setup.S,v 1.4 2005/03/23 10:39:03 tjd21 Exp $
+ * $Id: setup.S,v 1.5 2008/12/09 12:56:49 tjd Exp $
  *
  */
 	
@@ -225,6 +225,8 @@ ramdisk_max:	.long (-__PAGE_OFFSET-(512 << 20)-1) & 0x7fffffff
 
 entry_address:	.long 0		# This will be offset 0x30 (0x230 from b'sect)
 mbi_address:	.long 0		# This will be offset 0x34
+reloc_address:	.long 0		# This will be offset 0x38
+reloc_size:	.long 0		# This will be offset 0x3C
 
 /* Storage space for the size of memory */
 highmem_size:	.long 0
@@ -737,16 +739,20 @@ mb_hello_mess2_end:
         addl    $trampoline32, %eax		# %cs:trampoline32
 	movl	%eax, %cs:code32		# Stick it into the jmpi
 
-	/* Load a 32-bit pointer to the entry address into %ecx */
-	xorl	%ecx, %ecx			# Calculate
-	movw    %cs, %cx			# the linear
-        shll    $4, %ecx			# address of
-        addl    $entry_address, %ecx		# %cs:entry_address
+/* Load a 32-bit pointer to the entry address into %edx */
+	xorl	%edx, %edx			# Calculate
+	movw    %cs, %dx			# the linear
+        shll    $4, %edx			# address of
+        addl    $entry_address, %edx		# %cs:entry_address
 
 # Well, now's the time to actually move into protected mode.
 
 	lea	mb_ready_mess, %si
 	call	prtstr
+
+/* Load the relocation address and size into %ebx and %ecx */
+	movl    reloc_address, %ebx
+	movl    reloc_size, %ecx
 	
 /* May as well load this IDT now */
 	lidt	idt_48
@@ -758,16 +764,16 @@ mb_hello_mess2_end:
 flush_instr:	
 	
 	/* Set up segment registers */
-	movw	$__BOOT_DS, %dx
-	movw	%dx, %ds
-	movw	%dx, %es
-	movw	%dx, %fs
-	movw	%dx, %gs
-	movw	%dx, %ss
+	movw	$__BOOT_DS, %ax
+	movw	%ax, %ds
+	movw	%ax, %es
+	movw	%ax, %fs
+	movw	%ax, %gs
+	movw	%ax, %ss
 
-	/* Trampoline expects this in %eax */
-	movl	%ecx, %eax
-	
+	/* Trampoline expects this argument to be in %eax */
+	movl	%edx, %eax
+
 	/* Jump to the 32-bit trampoline */
 
 # NOTE: For high loaded big kernels we need a
@@ -944,8 +950,23 @@ gdt_48:
 
 .code32
 trampoline32:
-	/* Here, %eax = 32-bit pointer to entry_address */
+	/* Here, %eax = 32-bit pointer to entry_address        */
+	/*       %ebx = address to relocate data above 1MB to  */
+	/*       %ecx = amount of data above 1MB to relocate   */
 
+	/* Relocate everything above 1MB to its proper home */
+	cmpl	$0, %ecx
+	je	no_reloc
+	movl	$0x100000, %esi
+	movl	%ebx, %edi
+	addl	%ecx, %esi
+	addl	%ecx, %edi
+	inc	%ecx
+	std
+	rep movsb
+	cld
+no_reloc:
+	
 	/* Check if the bootloader gave us a (non-empty) command line */
 	movl	-8(%eax), %ebx			# cmd_line_ptr
 	cmpl	$0, %ebx
@@ -1027,7 +1048,7 @@ mbi_copy:
 	movb	(%ecx, %edi), %dl
 	movb	%dl, (%ebx, %edi)
 	cmp	$0x0, %edi
-	jne	mbi_copy	
+	jne	mbi_copy
 	
 	/* Copy memory size into MBI structure */
 	movl	4(%eax), %ebx	                # MBI pointer

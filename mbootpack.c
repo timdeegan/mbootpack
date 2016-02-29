@@ -24,7 +24,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
  *  02111-1307, USA.
  *
- * $Id: mbootpack.c,v 1.7 2007/01/20 11:01:57 tjd Exp $
+ * $Id: mbootpack.c,v 1.8 2008/12/09 12:53:58 tjd Exp $
  *
  */
 
@@ -39,6 +39,7 @@
 #include <getopt.h>
 #include <elf.h>
 #include <unistd.h>
+#include <stdint.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
@@ -118,6 +119,7 @@ static void usage(void)
 "Usage: mbpack [OPTIONS] kernel-image\n\n"
 "  -h --help                       Print this text.\n"
 "  -q --quiet                      Only output errors and warnings.\n"
+"  -t --truncate                   Clip module paths in command-lines.\n"
 "  -o --output=filename            Output to filename (default \"bzImage\").\n"
 "  -c --command-line=STRING        Set the kernel command line (DEPRECATED!).\n"
 "  -m --module=\"MOD arg1 arg2...\"  Load module MOD with arguments \"arg1...\"\n"
@@ -126,6 +128,15 @@ static void usage(void)
     exit(1);
 }
 
+/* Return a pointer into the string, skipping over all leading directories. */
+static char *clip_path(char *str)
+{
+    const char *p, *last = NULL;
+    for (p = str; *p && *p != ' '; p++)
+	if (*p == '/') 
+	    last = p;
+    return (last ? last + 1 : str);
+}
 
 static void place_kernel_section(address_t start, long int size)
 /* Place the kernel in memory, checking for the memory hole. */
@@ -488,9 +499,9 @@ int main(int argc, char **argv)
     struct mod_list *modp;
     address_t start, kernel_entry;
     long int size, mod_command_line_space, command_line_len;
-    int modules, opt, mbi_reloc_offset;
+    int modules, opt, mbi_reloc_offset, truncate;
 
-    static const char short_options[] = "hc:m:o:qM";
+    static const char short_options[] = "hc:m:o:qtM";
     static const struct option options[] = {
         { "help",		0, 0, 'h' },
         { "command-line",	1, 0, 'c' },
@@ -498,6 +509,7 @@ int main(int argc, char **argv)
         { "module",		1, 0, 'm' },
         { "output",		1, 0, 'o' },
         { "quiet",		0, 0, 'q' },
+        { "truncate",		0, 0, 't' },
         { 0, 		       	0, 0, 0 },
     };
 
@@ -507,6 +519,7 @@ int main(int argc, char **argv)
     command_line_len = 0;
     modules = 0;
     mod_command_line_space = 0;
+    truncate = 0;
     while((opt = getopt_long(argc, argv, short_options, options, 0)) != -1)
     {
         switch(opt) {
@@ -515,13 +528,18 @@ int main(int argc, char **argv)
             break;
         case 'm':
             modules++;
-            mod_command_line_space += strlen(optarg) + 1;
+	    /* Clip the path from the module name when calculating space */
+            mod_command_line_space += 
+		strlen(truncate ? clip_path(optarg) : optarg) + 1;
             break;
         case 'o':
             out_filename = optarg;
             break;
         case 'q':
             quiet = 1;
+            break;
+        case 't':
+            truncate = 1;
             break;
         case 'h':
         case '?':
@@ -532,7 +550,7 @@ int main(int argc, char **argv)
     imagename = argv[optind];
     if (!imagename || strlen(imagename) == 0) usage();
     command_line_len = strlen(command_line) + strlen(imagename) + 2;
-    /* Leave space to overwritethe command-line at boot time */
+    /* Leave space to overwrite the command-line at boot time */
     command_line_len = MAX(command_line_len, CMD_LINE_SPACE); 
     if (!out_filename) out_filename = "bzImage";
 
@@ -670,6 +688,8 @@ int main(int argc, char **argv)
             modp++;
 
             /* Store the module command line */
+	    if (truncate) 
+		mod_command_line = clip_path(mod_command_line);
             sprintf(mod_clp, "%s", mod_command_line);
             mod_clp += strlen(mod_clp) + 1;
 

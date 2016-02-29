@@ -20,7 +20,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
  *  02111-1307, USA.
  *
- * $Id: mbootpack.h,v 1.4 2005/04/05 12:01:29 tjd21 Exp $
+ * $Id: mbootpack.h,v 1.5 2008/12/09 12:53:24 tjd Exp $
  *
  */
 
@@ -31,17 +31,18 @@
 
 #undef NDEBUG
 #include <stdio.h>
+#include <stdint.h>
 
 /* Flags */
 extern int quiet;
 
 /* Types */
-typedef unsigned long address_t;
+typedef uint32_t address_t;
 
 typedef struct section_t {
     char *buffer;
     address_t start;
-    long int size;
+    int32_t size;
     struct section_t *prev;
     struct section_t *next;
 } section_t;
@@ -81,7 +82,7 @@ extern volatile address_t mb_mbi_address, mb_entry_address;
 
 
 /* Who are we? */
-#define MBOOTPACK_VERSION_STRING "v0.4 (alpha)"
+#define MBOOTPACK_VERSION_STRING "v0.6 (alpha)"
 
 #endif /* __MBOOTPACK__H__ */
 

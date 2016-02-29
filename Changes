@@ -1,4 +1,19 @@
 
+Version 0.6a (December 2008)
+----------------------------
+
+Added '-t' flag to strip out paths when making module command-lines; it
+should be specified before the '-m' arguments.
+
+Fixed the layout for kernels that load above 1MB; they are now loaded at
+1MB and relocated at boot time instead of having a lot of zeroes in the
+output file.
+
+Made 64-bit compiles work properly.
+
+Ditched bin2c in favour of some "od" runes taken from the xen BIOS build.
+
+
 Version 0.5a (January 2007)
 ---------------------------
 

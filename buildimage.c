@@ -21,7 +21,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
  *  02111-1307, USA.
  *
- * $Id: buildimage.c,v 1.2 2005/03/23 10:39:19 tjd21 Exp $
+ * $Id: buildimage.c,v 1.3 2008/12/09 12:55:11 tjd Exp $
  *
  */
 
@@ -68,10 +68,12 @@
  *  and parses the linux command line.
  */
 
-#define BZ_SETUP_OFFSET    (512 * (1 + SETUPSECTS)) 
-#define BZ_ENTRY_OFFSET    0x30
-#define BZ_MBI_OFFSET      0x34
+#define BZ_SETUP_OFFSET       (512 * (1 + SETUPSECTS)) 
 /* These *MUST* fit the offsets of entry_address and mbi_address in setup.S */
+#define BZ_ENTRY_OFFSET       0x30
+#define BZ_MBI_OFFSET         0x34
+#define BZ_HIGH_START_OFFSET  0x38
+#define BZ_HIGH_SIZE_OFFSET   0x3C
 
 /* Bring in the bzImage boot sector and setup code */
 #include "bzimage_header.c"
@@ -103,11 +105,27 @@ void make_bzImage(section_t *sections,
     int i;
     size_t offset;
     section_t *s;
+    address_t highmem_start = 0xffffffff, highmem_size = 0;
 
     /* Patch the kernel and mbi addresses into the setup code */
     *(address_t *)(bzimage_setup + BZ_ENTRY_OFFSET) = entry;
     *(address_t *)(bzimage_setup + BZ_MBI_OFFSET) = mbi;
     if (!quiet) printf("Kernel entry is %p, MBI is %p.\n", entry, mbi);
+
+    /* If the high-memory sections don't start at 1MB, shuffle them down 
+     * in the file and record how they should be relocated at boot time. */
+    for (s = sections, i = 0; s; s = s->next) {
+	if (s->start < HIGHMEM_START) continue;
+	highmem_start = MIN(highmem_start, s->start);
+	highmem_size = MAX(highmem_size, s->start + s->size - highmem_start);
+    }
+    if (highmem_size != 0) {
+	*(address_t *)(bzimage_setup + BZ_HIGH_START_OFFSET) = highmem_start;
+	*(address_t *)(bzimage_setup + BZ_HIGH_SIZE_OFFSET) = highmem_size;
+	if (!quiet) printf("High sections: %p bytes at %p.\n", 
+			   highmem_size, highmem_start);
+    } else
+	highmem_start = HIGHMEM_START;
 
     /* Write out header and trampoline */
     if (fseek(fp, 0, SEEK_SET) < 0) {
@@ -151,7 +169,7 @@ void make_bzImage(section_t *sections,
     /* Sorted list of sections higher than 1MB: write them out */
     for (s = sections, i = 0; s; s = s->next) {
         if (s->start < HIGHMEM_START) continue;
-        offset = (s->start - HIGHMEM_START) + BZ_SETUP_OFFSET;
+        offset = (s->start - highmem_start) + BZ_SETUP_OFFSET;
         if (fseek(fp, offset, SEEK_SET) < 0) {
             printf("Fatal: error seeking in output file: %s\n", 
                    strerror(errno));
