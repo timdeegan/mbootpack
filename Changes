@@ -1,4 +1,11 @@
 
+Version 0.5a (January 2007)
+---------------------------
+
+Fixed a type-size error that made 64-bit builds choke on the ELF program
+headers.
+
+
 Version 0.4a (April 2005)
 -------------------------
 

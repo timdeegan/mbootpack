@@ -24,7 +24,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
  *  02111-1307, USA.
  *
- * $Id: mbootpack.c,v 1.6 2005/04/05 11:52:19 tjd21 Exp $
+ * $Id: mbootpack.c,v 1.7 2007/01/20 11:01:57 tjd Exp $
  *
  */
 
@@ -119,8 +119,6 @@ static void usage(void)
 "  -h --help                       Print this text.\n"
 "  -q --quiet                      Only output errors and warnings.\n"
 "  -o --output=filename            Output to filename (default \"bzImage\").\n"
-"  -M --multiboot-output           Produce a multiboot kernel, not a bzImage\n"
-"                                  (sets default output file to \"mbImage\").\n"
 "  -c --command-line=STRING        Set the kernel command line (DEPRECATED!).\n"
 "  -m --module=\"MOD arg1 arg2...\"  Load module MOD with arguments \"arg1...\"\n"
 "                                  (can be used multiple times).\n"
@@ -350,7 +348,7 @@ static address_t load_kernel(const char *filename)
 
             /* Now look for an ELF32 header */    
             ehdr = (Elf32_Ehdr *)headerbuf;
-            if (*(unsigned long *)ehdr != 0x464c457f 
+            if (*(Elf32_Word *)ehdr != 0x464c457f 
                 || ehdr->e_ident[EI_DATA] != ELFDATA2LSB
                 || ehdr->e_ident[EI_CLASS] != ELFCLASS32
                 || ehdr->e_machine != EM_386)
@@ -490,7 +488,7 @@ int main(int argc, char **argv)
     struct mod_list *modp;
     address_t start, kernel_entry;
     long int size, mod_command_line_space, command_line_len;
-    int modules, opt, mbi_reloc_offset, make_multiboot;
+    int modules, opt, mbi_reloc_offset;
 
     static const char short_options[] = "hc:m:o:qM";
     static const struct option options[] = {
