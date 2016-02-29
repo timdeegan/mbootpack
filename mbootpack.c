@@ -24,7 +24,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
  *  02111-1307, USA.
  *
- * $Id: mbootpack.c,v 1.3 2005/03/23 10:38:36 tjd21 Exp $
+ * $Id: mbootpack.c,v 1.5 2005/03/31 12:00:25 tjd21 Exp $
  *
  */
 
@@ -238,6 +238,15 @@ static address_t load_kernel(const char *filename)
             exit(1);
         }
     }
+
+    /* Sanity-check: is this file compressed? */
+    if ((headerbuf[0] == '\037' && 
+         (headerbuf[1] == '\235' /* .Z */ ||
+          headerbuf[1] == '\213' /* .gz */)) ||
+        (headerbuf[0] == 'B' && headerbuf[1] == 'Z') /* .bz[2] */) {
+        printf("Warning: %s looks like a compressed file.\n"
+               "         You should uncompress it first!\n", filename);
+    }
     
     /* Now look for a multiboot header */
     for (i = 0; i <= MIN(len - 12, MULTIBOOT_SEARCH - 12); i += 4)
@@ -375,6 +384,10 @@ static address_t load_kernel(const char *filename)
                     loadsize = 0;
                 else 
                     loadsize = MIN((long int)phdr[i].p_filesz, size);
+
+                /* Skip zero-sized sections (wierd, but GNU Mach seems to 
+                 * have one */
+                if (size == 0) continue;
 
                 if ((buffer = malloc(size)) == NULL) {
                     printf("Fatal: malloc() for kernel load failed: %s\n",
@@ -627,6 +640,16 @@ int main(int argc, char **argv)
                 exit(1);
             }
             fclose(fp);
+            
+            /* Sanity-check: is this file compressed? */
+            if ((buffer[0] == '\037' && 
+                 (buffer[1] == '\235' /* .Z */ ||
+                  buffer[1] == '\213' /* .gz */)) ||
+                (buffer[0] == 'B' && buffer[1] == 'Z') /* .bz[2] */) {
+                printf("Warning: %s looks like a compressed file.\n",
+                       mod_filename);
+            }
+
             if (!quiet) printf("Loaded module from %s\n", mod_filename);
 
             /* Restore the command line to its former glory */

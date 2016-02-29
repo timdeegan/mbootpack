@@ -20,7 +20,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
  *  02111-1307, USA.
  *
- * $Id: mbootpack.h,v 1.2 2005/03/23 10:38:37 tjd21 Exp $
+ * $Id: mbootpack.h,v 1.3 2005/03/31 12:00:04 tjd21 Exp $
  *
  */
 
@@ -81,7 +81,7 @@ extern volatile address_t mb_mbi_address, mb_entry_address;
 
 
 /* Who are we? */
-#define MBOOTPACK_VERSION_STRING "v0.2 (alpha)"
+#define MBOOTPACK_VERSION_STRING "v0.3 (alpha)"
 
 #endif /* __MBOOTPACK__H__ */
 

@@ -36,6 +36,7 @@ demand for them):
 
     - support for kernels that load below 1MB
     - zImage-style compressed images
+    - sane error messgaes for insane load addresses
     - support for the MULTIBOOT_VIDEO_MODE bit
     - proper support for passing E820h memory-maps from bzImage
 
