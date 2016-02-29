@@ -1,0 +1,7 @@
+*.o
+*.d
+mbootpack
+bootsect
+setup
+bzimage_header.c
+bin2c
