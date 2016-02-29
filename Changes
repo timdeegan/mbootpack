@@ -1,0 +1,38 @@
+
+Version 0.4a (April 2005)
+-------------------------
+
+Added this change log. 
+
+Added check to catch kernels loading at very high addresses.
+
+Tidied makefile dependency generation so 'make clean' doesn't rebuild 
+the setup sectors.
+
+
+Version 0.3a (March 2005)
+-------------------------
+
+Added checks to detect and warn if the input files are compressed.
+
+Changed kernel loader to ignore zero-length sections in ELF kernel phdrs
+(GNU GRUB has one).
+
+
+Version 0.2a (March 2005)
+-------------------------
+
+Changed the location of the MBI and associated data from just after the 
+kernel to just below the 640k memory hole, because Xen assumes they will be 
+below 1MB and might overwrite them otherwise.
+
+Added support for providing the command-line at boot time, and for 
+splitting the boot command-line between the kernel and the first module.
+
+Removed pack-as-multiboot option, which was really a debugging feature.
+
+
+Version 0.1a (November 2004)
+----------------------------
+
+Initial alpha release

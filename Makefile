@@ -8,7 +8,7 @@
 
 PROG	:= mbootpack
 OBJS	:= mbootpack.o buildimage.o
-DEPS	:= mbootpack.d buildimage.d
+DEPS	:= mbootpack.o.d buildimage.o.d
 
 # 
 #  Tools etc.
@@ -20,10 +20,11 @@ INCS	:= -I. -I-
 DEFS	:= 
 LDFLAGS	:= 
 CC	:= gcc
-CFLAGS 	:= -W -Wall -Wpointer-arith -Wcast-qual -Wno-unused -Wno-format
+CFLAGS 	:= -Wall -Wpointer-arith -Wcast-qual -Wno-unused -Wno-format
 CFLAGS	+= -Wmissing-prototypes
 #CFLAGS	+= -pipe -g -O0 -Wcast-align
 CFLAGS	+= -pipe -O3 
+DEPFLAGS = -Wp,-MD,$(@F).d
 
 #
 #  Rules
@@ -61,10 +62,7 @@ buildimage.c buildimage.d: bzimage_header.c
 	$(CC) $(CFLAGS) $(INCS) $(DEFS) -c $< -o $@
 
 %.o: %.c
-	$(CC) $(CFLAGS) $(INCS) $(DEFS) -c $< -o $@
-
-%.d: %.c
-	$(CC) $(CFLAGS) $(INCS) $(DEFS) -M $< > $@
+	$(CC) $(CFLAGS) $(DEPFLAGS) $(INCS) $(DEFS) -c $< -o $@
 
 FRC: 
 .PHONY:: all FRC clean gdb

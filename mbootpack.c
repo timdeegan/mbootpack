@@ -24,7 +24,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
  *  02111-1307, USA.
  *
- * $Id: mbootpack.c,v 1.5 2005/03/31 12:00:25 tjd21 Exp $
+ * $Id: mbootpack.c,v 1.6 2005/04/05 11:52:19 tjd21 Exp $
  *
  */
 
@@ -132,6 +132,15 @@ static void usage(void)
 static void place_kernel_section(address_t start, long int size)
 /* Place the kernel in memory, checking for the memory hole. */
 {
+    if (start + size + 0x1000 - 0x100000 >= 0x2000000) {
+        /* Arbitrary limit: output file would be too big to TFTP.
+         * This is really to catch insane load addresses: Xen 2.0.5
+         * comes in a version with symbols, which asks to be loaded
+         * at Xen's *virtual* address (nearly 4GB). */
+        printf("Fatal: kernel section loads too high: %#x+%#x\n", start);
+        exit(1);
+    }
+
     if (start >= MEM_HOLE_END) {
         /* Above the memory hole: easy */
         next_free_space = MAX(next_free_space, start + size);
