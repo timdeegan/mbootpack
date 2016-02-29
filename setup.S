@@ -21,11 +21,11 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
  *  02111-1307, USA.
  *
- * $Id: setup.S,v 1.4 2004/11/10 11:18:50 tjd21 Exp $
+ * $Id: setup.S,v 1.4 2005/03/23 10:39:03 tjd21 Exp $
  *
  */
 	
-#include "mbootpack_version.h"
+#include "mbootpack.h"
 		
 /*
  *	setup.S		Copyright (C) 1991, 1992 Linus Torvalds
@@ -219,7 +219,7 @@ ramdisk_max:	.long (-__PAGE_OFFSET-(512 << 20)-1) & 0x7fffffff
 					# The highest safe address for
 					# the contents of an initrd
 
-/* Add two more known locations: the image builder will overwrite
+/* Add more known locations: the image builder will overwrite
  * these with the entry point and MBI location for the multiboot kernel.
  * These offsets *must* match the definitions in buildimage.c  */
 
@@ -737,6 +737,12 @@ mb_hello_mess2_end:
         addl    $trampoline32, %eax		# %cs:trampoline32
 	movl	%eax, %cs:code32		# Stick it into the jmpi
 
+	/* Load a 32-bit pointer to the entry address into %ecx */
+	xorl	%ecx, %ecx			# Calculate
+	movw    %cs, %cx			# the linear
+        shll    $4, %ecx			# address of
+        addl    $entry_address, %ecx		# %cs:entry_address
+
 # Well, now's the time to actually move into protected mode.
 
 	lea	mb_ready_mess, %si
@@ -750,12 +756,7 @@ mb_hello_mess2_end:
 	lmsw	%ax				# This is it!
 	jmp	flush_instr
 flush_instr:	
-	/* Load the size of high memory into %eax */
-	movl	highmem_size, %eax
-	/* Load a pointer to the multiboot information struct into %ebx*/
-	movl	mbi_address, %ebx
-	/* Load the entry address into %ecx */
-	movl	entry_address, %ecx
+	
 	/* Set up segment registers */
 	movw	$__BOOT_DS, %dx
 	movw	%dx, %ds
@@ -763,6 +764,10 @@ flush_instr:
 	movw	%dx, %fs
 	movw	%dx, %gs
 	movw	%dx, %ss
+
+	/* Trampoline expects this in %eax */
+	movl	%ecx, %eax
+	
 	/* Jump to the 32-bit trampoline */
 
 # NOTE: For high loaded big kernels we need a
@@ -939,19 +944,107 @@ gdt_48:
 
 .code32
 trampoline32:
-	/* Here, %eax = size of high memory in KB
-	 *       %ebx = mbi pointer
-	 *       %ecx = kernel entry address	 */
+	/* Here, %eax = 32-bit pointer to entry_address */
+
+	/* Check if the bootloader gave us a (non-empty) command line */
+	movl	-8(%eax), %ebx			# cmd_line_ptr
+	cmpl	$0, %ebx
+	je	no_cmd_line
+	cmpb	$0, 0(%ebx)
+	je	no_cmd_line
+
+	/* Find the MBI command line */
+	movl    %eax, %ecx			# &entry_address
+	addl	$(begtext-entry_address), %ecx	# --> start of setup
+	subl    $0x9200, %ecx			# --> reloc offset
+	movl	%ecx, %esi			# (copy offset)
+	movl	%ecx, %ebx			# (copy offset)
+	addl	4(%eax), %ecx			# --> current addr of MBI
+	addl	16(%ecx), %ebx			# --> cur. addr of MB cmdline
+
+	/* Overwrite the built-in MBI kernel command line */
+	movl	-8(%eax), %ecx
+	movl	$0, %edi
+
+	/* Give the kernel a 'self' word, that linux doesn't get */
+	movw	$0x202E, 0(%ebx)			# '. '
+	addl	$0x2, %ebx
+	
+cmd_line_copy:	
+	movb	(%ecx, %edi), %dl
+	movb	%dl, (%ebx, %edi)
+	inc	%edi
+	cmp	$CMD_LINE_SPACE-3, %edi 
+	je	cmd_line_copy_end
+
+	cmpb	$0x0, %dl
+	jne	cmd_line_copy
+cmd_line_copy_end:
+	movb	$0x0, (%ebx, %edi)
+	subl	$0x2, %ebx
+	
+	/* Look for '--' in the kernel command line */
+cmd_line_scan:
+	inc	%ebx
+	cmpb	$0x0, 0(%ebx)
+	je	no_cmd_line
+	cmpl	$0x202D2D20, 0(%ebx)		# ' -- '
+	jne	cmd_line_scan
+
+	/* Found it: terminate kernel's command line */
+	movb	$0x0, 0(%ebx)
+	inc	%ebx
+	/* Relocate address to where it will be moved to */
+	subl	%esi, %ebx
+	
+	/* Is there a module 0? */
+	movl	%esi, %ecx			# Reloc offset
+	addl	4(%eax), %ecx			# --> current addr of MBI
+	cmpl	$0x0, 20(%ecx)			# (check module count)
+	je	no_cmd_line
+	/* Overwrite module 0's command line */
+	movl	%esi, %edx			# Reloc offset
+	addl	24(%ecx), %edx			# --> cur. add. of Module 0
+	movl	%ebx, 8(%edx)			# --> blat mod. 0's cmdline
+no_cmd_line:
+
+
+	/* Relocate the MBI from after the setup code to its proper home
+	 * between the MBI pointer and 0xa000 */
+	movl    %eax, %ecx			# &entry_address
+	addl	$(begtext-entry_address), %ecx	# --> start of setup
+	subl    $0x9200, %ecx			# --> reloc offset
+	addl	4(%eax), %ecx			# --> current addr of MBI
+	
+	movl	$0xa000, %ebx			# End of MBI
+	subl	4(%eax), %ebx			# --> size of MBI
+	movl	%ebx, %edi
+	
+	movl	4(%eax), %ebx	                # Destination of MBI
+	
+mbi_copy:
+	dec	%edi
+	movb	(%ecx, %edi), %dl
+	movb	%dl, (%ebx, %edi)
+	cmp	$0x0, %edi
+	jne	mbi_copy	
 	
 	/* Copy memory size into MBI structure */
-	movl	%eax, 8(%ebx)
-	movl	$0x280, %eax
-	movl	%eax, 4(%ebx)
+	movl	4(%eax), %ebx	                # MBI pointer
+	movl	8(%eax), %ecx			# highmem_size
+	movl	%ecx, 8(%ebx)			# --> mbi.mem_upper
+	movl	$0x280, %ecx
+	movl	%ecx, 4(%ebx)			# --> mbi.mem_lower
 	/* Set the MB_INFO_MEMORY bit */
 	orl	$1, 0(%ebx)
+
+	/* Recover the MBI pointer into %ebx */
+	movl	4(%eax), %ebx	                # MBI pointer
+	/* Extract the load address into %ecx */
+	movl	0(%eax), %ecx
 	/* Let the kernel know we're a multiboot loader */
 	movl	$0x2BADB002, %eax
-	/* Jump to the kernel address upplied in %ecx */
+	/* Jump to the kernel address supplied */
 	jmp	*%ecx
 
 # Setup signature -- must be last

@@ -20,11 +20,11 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
  *  02111-1307, USA.
  *
- * $Id: bootsect.S,v 1.2 2004/11/10 10:23:44 tjd21 Exp $
+ * $Id: bootsect.S,v 1.2 2005/03/23 10:39:11 tjd21 Exp $
  *
  */
 	
-#include "mbootpack_version.h"
+#include "mbootpack.h"
 		
 /*
  *	bootsect.S		Copyright (C) 1991, 1992 Linus Torvalds
@@ -52,8 +52,6 @@
 #define ASK_VGA         0xfffd
 
 
-/* This *must* match with the definition of BZ_SETUP_OFFSET in buildimage.c */
-SETUPSECTS	= 6
 /* SETUPSECTS	= 4 */			/* default nr of setup-sectors */
 BOOTSEG		= 0x07C0		/* original address of boot-sector */
 INITSEG		= DEF_INITSEG		/* we move boot here - out of the way */

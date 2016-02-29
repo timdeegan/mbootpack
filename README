@@ -9,21 +9,27 @@ layout, and then saves the image of the loaded system, along with an
 almost-standard linux bzImage header which takes care of the start-of-day 
 requirements of a multiboot kernel (setting up 32-bit protected mode, etc.)
 
-Example invocation, to package a xen VMM and xenolinux guest:
+Example invocation, to package a xen VMM and xenlinux guest and initrd:
 
-   mbootpack -c "com1=9600,8n1 console=com1,tty dom0_mem=65536 noht"  \
-             -m "./xenolinux console=ttyS0,9600n8 root=/dev/sda3 ro"  \
-             -o bzImage ./xen-image
+   mbootpack -o bzImage -m ./xenlinux -m ./initrd.img ./xen-image
 
 You can now boot the 'bzImage' file using your favourite linux bootloader.
 
-With the '-M' flag, it produces a multiboot image instead of a bzImage.
-Thsi is mostly for testing, but might be useful if you have a multiboot
-loader that can't load multiple modules.
+The kernel command line will be provided at boot time by the bootloader
+(you can specify a kernel command-line using the '-c' flag, but it will
+be overridden at boot time unledd the bootloder provides an entirely
+empty command line).  If you wan to override the command line for the
+first module (i.e. domain 0 kernel in Xen) at boot time, append ' -- '
+and the module commadn line to the bootloader command line, e.g.:
 
-This is ALPHA code: there are execution paths which nhave *not* been tested, 
-though it works for loading the Xen hypervisor.  Bug reports and patches
-are very welcome, though I can't promise to be able to fix any problems.
+  boot: bzImage com1=9600,8n1 console=com1 dom0_mem=49152 -- root=/dev/sda3 ro console=ttyS0,9600n8 
+
+Everything before the '--' is passed to the kernel (xen) as its command
+line; everything after is passed to the first module (xenlinux).
+
+This is ALPHA code: there are execution paths which have *not* been
+tested, though it works for loading the Xen hypervisor using GrUB, LILO
+or SYSLINUX.  Bug reports and patches are very welcome.
 
 Possible features for future versions (all look possible, if there's any 
 demand for them):
@@ -32,18 +38,16 @@ demand for them):
     - zImage-style compressed images
     - support for the MULTIBOOT_VIDEO_MODE bit
     - proper support for passing E820h memory-maps from bzImage
-    - allow the command-line to be specified at boot time
 
 
-Tim Deegan <tjd21@cl.cam.ac.uk>, November 2004
+Tim Deegan <tjd21@cl.cam.ac.uk>, March 2005
 
 
 
 License and attributions
 ------------------------
 
-The bzImage header block is taken from the Linux kernel with a few
-modifications, mostly to make it build cleanly outside the linux source.
+The bzImage header block was originally taken from the Linux kernel.
 http://www.kernel.org/
 
 Some parts of the Multiboot loader code are based on GNU GRUB.
@@ -53,7 +57,7 @@ http://www.gnu.org/software/grub/
 Bin2C was written by Nicolas Doualot; I tidied it a bit for a clean compile.
 http://slubman.celeonet.fr/program.php?style=Default&project=bin2c
 
-All other code is copyright (C) 2003-2004  Tim Deegan (tjd21@cl.cam.ac.uk)
+All other code is copyright (C) 2003-2005  Tim Deegan (tjd21@cl.cam.ac.uk)
 
 mbootpack is distributed under the GNU General Public License: see "GPL"
 

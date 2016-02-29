@@ -24,13 +24,12 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
  *  02111-1307, USA.
  *
- * $Id: mbootpack.c,v 1.6 2004/11/10 10:13:35 tjd21 Exp $
+ * $Id: mbootpack.c,v 1.3 2005/03/23 10:38:36 tjd21 Exp $
  *
  */
 
 #define _GNU_SOURCE
 #include "mbootpack.h"
-#include "mbootpack_version.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -59,8 +58,6 @@
  *  The memory map will be made up roughly like so:
  *
  *  =============
- *  kernel
- *  -------------
  *  multiboot information (mbi) struct
  *  -------
  *  kernel command line
@@ -70,6 +67,10 @@
  *  module command lines
  *  -------
  *  module information structs
+ *  =============
+ *   (memory hole)
+ *  =============
+ *  kernel
  *  -------------
  *  module 1
  *  -------------
@@ -110,7 +111,6 @@ static section_t *sections = NULL;
 static section_t *last_section = NULL;
 static address_t next_free_space = 0; 
 
-
 static void usage(void)
 /* If we don't understand the command-line options */ 
 {
@@ -121,7 +121,7 @@ static void usage(void)
 "  -o --output=filename            Output to filename (default \"bzImage\").\n"
 "  -M --multiboot-output           Produce a multiboot kernel, not a bzImage\n"
 "                                  (sets default output file to \"mbImage\").\n"
-"  -c --command-line=STRING        Set the kernel command line to STRING.\n"
+"  -c --command-line=STRING        Set the kernel command line (DEPRECATED!).\n"
 "  -m --module=\"MOD arg1 arg2...\"  Load module MOD with arguments \"arg1...\"\n"
 "                                  (can be used multiple times).\n"
 "\n");
@@ -478,7 +478,6 @@ int main(int argc, char **argv)
         { "module",		1, 0, 'm' },
         { "output",		1, 0, 'o' },
         { "quiet",		0, 0, 'q' },
-        { "multiboot-output",  	0, 0, 'M' },
         { 0, 		       	0, 0, 0 },
     };
 
@@ -488,7 +487,6 @@ int main(int argc, char **argv)
     command_line_len = 0;
     modules = 0;
     mod_command_line_space = 0;
-    make_multiboot = 0;
     while((opt = getopt_long(argc, argv, short_options, options, 0)) != -1)
     {
         switch(opt) {
@@ -505,9 +503,6 @@ int main(int argc, char **argv)
         case 'q':
             quiet = 1;
             break;
-        case 'M':
-            make_multiboot = 1;
-            break;
         case 'h':
         case '?':
         default:
@@ -517,7 +512,9 @@ int main(int argc, char **argv)
     imagename = argv[optind];
     if (!imagename || strlen(imagename) == 0) usage();
     command_line_len = strlen(command_line) + strlen(imagename) + 2;
-    if (!out_filename) out_filename = (make_multiboot) ? "mbImage" : "bzImage";
+    /* Leave space to overwritethe command-line at boot time */
+    command_line_len = MAX(command_line_len, CMD_LINE_SPACE); 
+    if (!out_filename) out_filename = "bzImage";
 
     /* Place and load the kernel */
     kernel_entry = load_kernel(imagename);
@@ -532,7 +529,8 @@ int main(int argc, char **argv)
                + mod_command_line_space) 
               + 3 ) & ~3)
             + modules * sizeof (struct mod_list));
-    start = place_section(size, 4);
+    /* Locate this section after the setup sectors, in *low* memory */
+    start = place_mbi(size);
 
     if ((buffer = malloc(size)) == NULL) {
         printf("Fatal: malloc() for boot metadata failed: %s\n",
@@ -608,7 +606,7 @@ int main(int argc, char **argv)
                 exit(1);
             }
             size = sb.st_size;
-            start = place_section(size, PAGE_SIZE);
+            start = place_section(size, X86_PAGE_SIZE);
             /* XXX should be place_section(size, 4) if the MBH hasn't got
              * XXX MULTIBOOT_PAGE_ALIGN set, but that breaks Xen */
 
@@ -669,16 +667,10 @@ int main(int argc, char **argv)
         printf("Fatal: cannot open %s: %s\n", out_filename, strerror(errno));
         exit(1);
     }
-    if (make_multiboot)
-        make_mb_image(sections, 
-                     kernel_entry, 
-                     ((address_t)mbi) + mbi_reloc_offset,
-                     fp);
-    else
-        make_bzImage(sections, 
-                     kernel_entry, 
-                     ((address_t)mbi) + mbi_reloc_offset,
-                     fp);
+    make_bzImage(sections, 
+                 kernel_entry, 
+                 ((address_t)mbi) + mbi_reloc_offset,
+                 fp);
     fclose(fp);
 
     /* Success! */

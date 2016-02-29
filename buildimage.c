@@ -21,7 +21,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
  *  02111-1307, USA.
  *
- * $Id: buildimage.c,v 1.2 2004/11/10 10:23:26 tjd21 Exp $
+ * $Id: buildimage.c,v 1.2 2005/03/23 10:39:19 tjd21 Exp $
  *
  */
 
@@ -52,6 +52,7 @@
  *  (Bootloader)
  *  --------------
  *  bzImage startup code
+ *  MBI, command-lines, module info
  *  ==============   (0xa0000)
  *  (memory hole)
  *  ==============   (0x100000)
@@ -63,17 +64,35 @@
  *  tasks to get to 32-bit protected mode, then sets registers appropriately 
  *  and jumps to the kernel's entry address.
  *  
+ *  It also does some relocation to make sure the MBI is where we expect it, 
+ *  and parses the linux command line.
  */
 
-#define BZ_SETUP_OFFSET    (512 * (1 + 6)) /* boot sector + 6 setup sectors */
-/* This *MUST* match the SETUPSECTS in bootsect.S */
-
+#define BZ_SETUP_OFFSET    (512 * (1 + SETUPSECTS)) 
 #define BZ_ENTRY_OFFSET    0x30
 #define BZ_MBI_OFFSET      0x34
 /* These *MUST* fit the offsets of entry_address and mbi_address in setup.S */
 
 /* Bring in the bzImage boot sector and setup code */
 #include "bzimage_header.c"
+
+address_t place_mbi(long int size) 
+/* Find space at the top of *low* memory for the MBI and associated red tape */
+{
+    address_t start;
+    start = 0xa000 - size;
+    if (start < 0x9000 + sizeof(bzimage_bootsect) + sizeof(bzimage_setup)) {
+        printf("Fatal: command-lines too long: need %i, have %i bytes\n",
+               size, 
+               0x1000 - (sizeof(bzimage_bootsect) + sizeof(bzimage_setup)));
+        exit(1);        
+    }
+    if (!quiet) {
+        printf("Placed MBI and strings (%p+%p)\n", 
+               start, size);
+    }
+    return start;
+}
 
 void make_bzImage(section_t *sections, 
                   address_t entry, 
@@ -84,15 +103,6 @@ void make_bzImage(section_t *sections,
     int i;
     size_t offset;
     section_t *s;
-
-    for (s = sections; s; s = s->next) {
-        if (s->start < HIGHMEM_START) {
-            printf("Fatal: kernel uses low memory.  Sorry, you'll have to "
-                   "wait for the next\n"
-                   "       version to load kernels below 1MB.\n");
-            exit(1);
-        }
-    }
 
     /* Patch the kernel and mbi addresses into the setup code */
     *(address_t *)(bzimage_setup + BZ_ENTRY_OFFSET) = entry;
@@ -119,8 +129,28 @@ void make_bzImage(section_t *sections,
     if (!quiet) printf("Wrote bzImage header: %i + %i bytes.\n", 
                        sizeof(bzimage_bootsect), sizeof(bzimage_setup));
 
+    /* Sorted list of sections below 1MB: write them out */
+    for (s = sections, i = 0; s; s = s->next) {
+        if (s->start >= HIGHMEM_START) continue;
+        offset = (s->start - 0x9000);
+        if (fseek(fp, offset, SEEK_SET) < 0) {
+            printf("Fatal: error seeking in output file: %s\n", 
+                   strerror(errno));
+            exit(1);
+        }
+        if (fwrite(s->buffer, s->size, 1, fp) != 1) {
+            printf("Fatal: error writing to output file: %s\n", 
+                   strerror(errno));
+            exit(1);
+        }
+        i++;
+    }
+
+    if (!quiet) printf("Wrote %i low-memory sections.\n", i);
+
     /* Sorted list of sections higher than 1MB: write them out */
-    for (s = sections, i=0; s; s = s->next) {
+    for (s = sections, i = 0; s; s = s->next) {
+        if (s->start < HIGHMEM_START) continue;
         offset = (s->start - HIGHMEM_START) + BZ_SETUP_OFFSET;
         if (fseek(fp, offset, SEEK_SET) < 0) {
             printf("Fatal: error seeking in output file: %s\n", 
@@ -137,150 +167,6 @@ void make_bzImage(section_t *sections,
     
     if (!quiet) printf("Wrote %i high-memory sections.\n", i);
 }
-
-
-/*
- *  Option 2: build an image that a multiboot loader can load (if, say,
- *  your multiboot loader can't handle multiple modules).  We take the
- *  memory image and stick a tiny piece of trampoline code on the end,
- *  which copies some values from the mbi struct that the loader
- *  sets up (e.g. memory size), and then jumps to the kernel entry address.
- *  (This code is in trampoline.S)
- * 
- *  Then we prepend multiboot and elf32 headers, giving our trampoline 
- *  as the entry address for the overall package.
- */
-
-
-void make_mb_image(section_t *sections, 
-                   address_t entry, 
-                   address_t mbi,
-                   FILE *fp)
-/* Rework this list of sections into a multiboot image and write it to fp */
-{
-    int i;
-    size_t offset;
-    section_t *s;
-    address_t end_of_image, loadsize;
-    struct multiboot_header mbh;
-    Elf32_Ehdr ehdr;
-    Elf32_Phdr phdr;
-
-    /* Fill in the details in the trampoline code */
-    mb_mbi_address = mbi;
-    mb_entry_address = entry;
-    if (!quiet) printf("Kernel entry is %p, MBI is %p.\n", entry, mbi);
-
-    end_of_image = 0;
-    for (s = sections; s; s = s->next) {
-        if (s->start < HIGHMEM_START) {
-            printf("Fatal: kernel uses low memory.  Sorry, you'll have to "
-                   "wait for the next\n"
-                   "       version to load kernels below 1MB.\n");
-            exit(1);
-        }
-        end_of_image = MAX(end_of_image, (s->start + s->size));
-    }
-
-    loadsize = (end_of_image - HIGHMEM_START) 
-        + (mb_trampoline_end - mb_trampoline);
-
-    /* Multiboot and ELF headers */
-    memset ((char *)&mbh, 0, sizeof mbh);
-    memset ((char *)&ehdr, 0, sizeof ehdr); 
-    memset ((char *)&phdr, 0, sizeof phdr);
-
-    mbh.magic = 0x1BADB002;
-    mbh.flags = MULTIBOOT_MEMORY_INFO;
-    mbh.checksum = (~(mbh.magic + mbh.flags)) + 1;
-
-    *(unsigned long *)&ehdr = 0x464c457f;
-    ehdr.e_ident[EI_CLASS] = ELFCLASS32;
-    ehdr.e_ident[EI_DATA] = ELFDATA2LSB;
-    ehdr.e_ident[EI_VERSION] = EV_CURRENT;
-    ehdr.e_ident[EI_OSABI] = ELFOSABI_STANDALONE;
-    ehdr.e_type = ET_EXEC;
-    ehdr.e_machine = EM_386;
-    ehdr.e_version = EV_CURRENT;
-    ehdr.e_entry = end_of_image;
-    ehdr.e_phoff = sizeof ehdr;
-    ehdr.e_ehsize = sizeof ehdr;
-    ehdr.e_phentsize = sizeof phdr;
-    ehdr.e_phnum = 1;
-    
-    /* One great big program header.  Ought to do one header per section, 
-     * but they're pretty much contiguous anyway.  In any case this 
-     * will test the writeout code from the bzImage buider. */
-
-    phdr.p_type = PT_LOAD;
-    phdr.p_flags = PF_X|PF_R|PF_W;
-    phdr.p_offset = sizeof ehdr + sizeof phdr + sizeof mbh;
-    phdr.p_vaddr = HIGHMEM_START;
-    phdr.p_paddr = HIGHMEM_START;
-    phdr.p_filesz = loadsize;
-    phdr.p_memsz = loadsize;
-    phdr.p_align = 0;
-    
-
-    /* Write out headers */
-    if (fseek(fp, 0, SEEK_SET) < 0) {
-        printf("Fatal: error seeking in output file: %s\n", 
-               strerror(errno));
-        exit(1);
-    }
-    if (fwrite(&ehdr, sizeof(ehdr), 1, fp) != 1) {
-        printf("Fatal: error writing to output file: %s\n", 
-               strerror(errno));
-        exit(1);
-    }
-    if (fwrite(&phdr, sizeof(phdr), 1, fp) != 1) {
-        printf("Fatal: error writing to output file: %s\n", 
-               strerror(errno));
-        exit(1);
-    }
-    if (fwrite(&mbh, sizeof(mbh), 1, fp) != 1) {
-        printf("Fatal: error writing to output file: %s\n", 
-               strerror(errno));
-        exit(1);
-    }
-    if (!quiet) printf("Wrote ELF/multiboot headers.\n");
-
-    
-    /* Sorted list of sections higher than 1MB: write them out */
-    for (s = sections, i=0; s; s = s->next) {
-        offset = (s->start - HIGHMEM_START) 
-            + sizeof mbh + sizeof phdr + sizeof ehdr;
-        if (fseek(fp, offset, SEEK_SET) < 0) {
-            printf("Fatal: error seeking in output file: %s\n", 
-                   strerror(errno));
-            exit(1);
-        }
-        if (fwrite(s->buffer, s->size, 1, fp) != 1) {
-            printf("Fatal: error writing to output file: %s\n", 
-                   strerror(errno));
-            exit(1);
-        }
-        i++;
-    }
-    if (!quiet) printf("Wrote %i high-memory sections.\n", i);
-
-    /* Write out trampoline */
-    offset = (end_of_image - HIGHMEM_START) 
-            + sizeof mbh + sizeof phdr + sizeof ehdr;
-    if (fseek(fp, offset, SEEK_SET) < 0) {
-        printf("Fatal: error seeking in output file: %s\n", 
-               strerror(errno));
-        exit(1);
-    }
-    if (fwrite(mb_trampoline, (mb_trampoline_end-mb_trampoline), 1, fp) != 1) {
-        printf("Fatal: error writing to output file: %s\n", 
-               strerror(errno));
-        exit(1);
-    }
-    if (!quiet) printf("Wrote multiboot trampoline.\n");
-    
-}
-
 
 
 /*

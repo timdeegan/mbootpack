@@ -20,12 +20,14 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
  *  02111-1307, USA.
  *
- * $Id: mbootpack.h,v 1.4 2004/11/10 10:22:32 tjd21 Exp $
+ * $Id: mbootpack.h,v 1.2 2005/03/23 10:38:37 tjd21 Exp $
  *
  */
 
 #ifndef __MBOOTPACK__H__
 #define __MBOOTPACK__H__
+
+#ifndef __MB_ASM
 
 #undef NDEBUG
 #include <stdio.h>
@@ -50,10 +52,8 @@ extern void make_bzImage(section_t *sections,
                          address_t mbi, 
                          FILE *fp);
 
-extern void make_mb_image(section_t *sections, 
-                          address_t entry, 
-                          address_t mbi, 
-                          FILE *fp);
+address_t place_mbi(long int size);
+
 
 /* trampoline.S */
 extern unsigned char mb_trampoline[];
@@ -65,10 +65,23 @@ extern volatile address_t mb_mbi_address, mb_entry_address;
 #define MAX(_x,_y) (((_x)<=(_y))?(_y):(_x))
 #define ROUNDUP_P2(_x, _a) (((_x)+((_a)-1))&(~((_a)-1)))
 
+#endif
+
 /* x86 memory: such fun */
 #define MEM_HOLE_START  0xa0000
 #define MEM_HOLE_END    0x100000
 #define HIGHMEM_START   MEM_HOLE_END
+#define X86_PAGE_SIZE   0x1000
+
+/* How much command line we'll take from the bootloader. */
+#define CMD_LINE_SPACE  0x300
+
+/* Number of 512-byte sectors to load in low memory (max 7) */
+#define SETUPSECTS	7
+
+
+/* Who are we? */
+#define MBOOTPACK_VERSION_STRING "v0.2 (alpha)"
 
 #endif /* __MBOOTPACK__H__ */
 
