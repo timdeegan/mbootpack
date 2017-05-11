@@ -79,7 +79,7 @@ extern volatile address_t mb_mbi_address, mb_entry_address;
 
 
 /* Who are we? */
-#define MBOOTPACK_VERSION_STRING "v0.6 (alpha)"
+#define MBOOTPACK_VERSION_STRING "v0.7 (alpha)"
 
 #endif /* __MBOOTPACK__H__ */
 

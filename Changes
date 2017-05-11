@@ -1,3 +1,10 @@
+Version 0.7a (May 2017)
+-----------------------
+
+Changed loader to skip program headers that aren't PT_LOAD.
+
+Fixed a few compile issues that cropped up in the last nine years.
+
 
 Version 0.6a (December 2008)
 ----------------------------
