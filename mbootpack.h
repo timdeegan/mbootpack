@@ -3,7 +3,7 @@
  *
  *  Common definitions for mbootpack
  * 
- *  Copyright (C) 2003-2004  Tim Deegan (tjd21@cl.cam.ac.uk)
+ *  Copyright (C) 2003-2017 Tim Deegan (tjd@phlegethon.org)
  * 
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License as
@@ -19,9 +19,6 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
  *  02111-1307, USA.
- *
- * $Id: mbootpack.h,v 1.5 2008/12/09 12:53:24 tjd Exp $
- *
  */
 
 #ifndef __MBOOTPACK__H__

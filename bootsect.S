@@ -19,9 +19,6 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
  *  02111-1307, USA.
- *
- * $Id: bootsect.S,v 1.2 2005/03/23 10:39:11 tjd21 Exp $
- *
  */
 	
 #include "mbootpack.h"

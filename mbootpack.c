@@ -5,7 +5,7 @@
  *  them as if they were a linux kernel.   Only supports a subset of 
  *  the multiboot info page options (enough to boot the Xen hypervisor).
  *
- *  Copyright (C) 2003-2004  Tim Deegan (tjd21@cl.cam.ac.uk)
+ *  Copyright (C) 2003-2017 Tim Deegan (tjd@phlegethon.org)
  * 
  *  Parts based on GNU GRUB, Copyright (C) 2000  Free Software Foundation, Inc
  *
@@ -23,9 +23,6 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
  *  02111-1307, USA.
- *
- * $Id: mbootpack.c,v 1.8 2008/12/09 12:53:58 tjd Exp $
- *
  */
 
 #define _GNU_SOURCE

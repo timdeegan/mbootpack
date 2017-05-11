@@ -3,7 +3,7 @@
  *
  *  This is setup.S from the linux 2.6.9 source code,
  *  with heavy cuts and changes for mbootpack
- *  November 2004 Tim Deegan <tjd21@cl.cam.ac.uk>
+ *  November 2004 Tim Deegan <tjd@phlegethon.org>
  *
  *  
  *  This program is free software; you can redistribute it and/or
@@ -20,9 +20,6 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
  *  02111-1307, USA.
- *
- * $Id: setup.S,v 1.5 2008/12/09 12:56:49 tjd Exp $
- *
  */
 	
 #include "mbootpack.h"

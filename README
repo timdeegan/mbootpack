@@ -40,7 +40,7 @@ demand for them):
     - proper support for passing E820h memory-maps from bzImage
 
 
-Tim Deegan <tjd21@cl.cam.ac.uk>, April 2005
+Tim Deegan <tjd@phlegethon.org>, April 2005
 
 
 
@@ -54,10 +54,7 @@ Some parts of the Multiboot loader code are based on GNU GRUB.
 mb_info.h and mb_header.h are taken from GNU GRUB.
 http://www.gnu.org/software/grub/
 
-Bin2C was written by Nicolas Doualot; I tidied it a bit for a clean compile.
-http://slubman.celeonet.fr/program.php?style=Default&project=bin2c
-
-All other code is copyright (C) 2003-2005  Tim Deegan (tjd21@cl.cam.ac.uk)
+All other code is copyright (C) 2003-2017 Tim Deegan (tjd@phlegethon.org)
 
 mbootpack is distributed under the GNU General Public License: see "GPL"
 
