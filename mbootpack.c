@@ -392,15 +392,16 @@ static address_t load_kernel(const char *filename)
             /* Obey the program headers to load the kernel */
             for(i = 0; i < ehdr->e_phnum; i++) {
 
+                /* Skip sections that aren't to be loaded at all. */
+                if (phdr[i].p_type != PT_LOAD) 
+                    continue;
+
                 start = phdr[i].p_paddr;
                 size = phdr[i].p_memsz;
-                if (phdr[i].p_type != PT_LOAD) 
-                    loadsize = 0;
-                else 
-                    loadsize = MIN((long int)phdr[i].p_filesz, size);
+                loadsize = MIN((long int)phdr[i].p_filesz, size);
 
-                /* Skip zero-sized sections (wierd, but GNU Mach seems to 
-                 * have one */
+                /* Skip zero-sized sections (weird, but GNU Mach seems to 
+                 * have one). */
                 if (size == 0) continue;
 
                 if ((buffer = malloc(size)) == NULL) {
