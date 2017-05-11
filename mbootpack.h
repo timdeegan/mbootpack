@@ -37,7 +37,7 @@
 extern int quiet;
 
 /* Types */
-typedef uint32_t address_t;
+typedef uintptr_t address_t;
 
 typedef struct section_t {
     char *buffer;
