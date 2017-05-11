@@ -38,7 +38,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
-#include <asm/page.h>
 
 #include "mbootpack.h"
 #include "mb_header.h"

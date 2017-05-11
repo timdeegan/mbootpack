@@ -43,7 +43,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
-#include <asm/page.h>
 
 /* From GNU GRUB */
 #include "mb_header.h"
