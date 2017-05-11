@@ -127,7 +127,7 @@ static void usage(void)
 /* Return a pointer into the string, skipping over all leading directories. */
 static char *clip_path(char *str)
 {
-    const char *p, *last = NULL;
+    char *p, *last = NULL;
     for (p = str; *p && *p != ' '; p++)
 	if (*p == '/') 
 	    last = p;
